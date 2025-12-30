@@ -1,60 +1,66 @@
-def call(Map config) {
-    pipeline {
-        agent any
+pipeline {
+    agent any
+    
+    options {
+        skipDefaultCheckout()
+        disableConcurrentBuilds()
+        timeout(time: 1, unit: 'HOURS')
+    }
 
-        parameters {
-            string(name: 'VERSION', defaultValue: 'latest', description: 'Version to deploy')
-            booleanParam(name: 'RUN_TESTS', defaultValue: true, description: 'Run tests?')
-        }
+    environment {
+        CLIENT_NAME = "${env.CLIENT_NAME}"
+        ENVIRONMENT = "${env.ENVIRONMENT}"
+    }
 
-        stages {
-            stage('Hello') {
-                steps {
-                    echo "👋 Hello from ${config.clientName}"
-                    echo "Environment: ${config.environment}"
-                    echo "Version: ${params.VERSION}"
-                }
-            }
-
-            stage('Build') {
-                steps {
-                    echo "🔨 Building for ${config.clientName}"
-                    sh "echo Building version ${params.VERSION}"
-                }
-            }
-
-            stage('Test') {
-                when {
-                    expression { params.RUN_TESTS }
-                }
-                steps {
-                    echo "🧪 Running tests"
-                    sh "echo Tests passed"
-                }
-            }
-
-            stage('Deploy') {
-                steps {
-                    echo "🚀 Deploying to ${config.environment}"
-                    sh """
-                        echo ==========================================
-                        echo DEPLOYED ${config.clientName}
-                        echo ENV: ${config.environment}
-                        echo VERSION: ${params.VERSION}
-                        echo ==========================================
-                    """
+    stages {
+        stage('Validate') {
+            steps {
+                script {
+                    if (params.VERSION.isEmpty()) {
+                        error('VERSION parameter cannot be empty')
+                    }
+                    currentBuild.displayName = "#${BUILD_NUMBER}-${params.VERSION}"
                 }
             }
         }
 
-        post {
-            success {
-                echo "✅ Deployment successful"
+        stage('Build') {
+            steps {
+                echo "🔨 Building ${env.CLIENT_NAME}"
+                sh "echo Building version ${params.VERSION}"
             }
-            failure {
-                echo "❌ Deployment failed"
+        }
+
+        stage('Test') {
+            when {
+                expression { params.RUN_TESTS }
+            }
+            steps {
+                echo "🧪 Running tests for ${env.CLIENT_NAME}"
+                sh "echo Tests passed"
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                echo "🚀 Deploying to ${env.ENVIRONMENT}"
+                sh """
+                    echo ==========================================
+                    echo DEPLOYED ${env.CLIENT_NAME}
+                    echo ENV: ${env.ENVIRONMENT}
+                    echo VERSION: ${params.VERSION}
+                    echo ==========================================
+                """
             }
         }
     }
-}
 
+    post {
+        success {
+            echo "✅ Deployment successful for ${env.CLIENT_NAME}"
+        }
+        failure {
+            echo "❌ Deployment failed for ${env.CLIENT_NAME}"
+        }
+    }
+}
