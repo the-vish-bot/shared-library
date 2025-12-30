@@ -10,7 +10,12 @@ def call() {
                     script {
                         // Load clients.json from library resources
                         def clientsJson = libraryResource('clients.json')
-                        def clients = new JsonSlurper().parseText(clientsJson)
+                        def rawClients = new JsonSlurper().parseText(clientsJson)
+
+                        // Convert each client to a plain HashMap
+                        def clients = rawClients.collect { client ->
+                            return [name: client.name, environment: client.environment]
+                        }
 
                         echo "Creating jobs for ${clients.size()} clients..."
 
