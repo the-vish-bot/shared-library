@@ -1,0 +1,12 @@
+{
+  "clients": [
+    {
+      "name": "acme",
+      "environment": "production"
+    },
+    {
+      "name": "globex",
+      "environment": "production"
+    }
+  ]
+}
