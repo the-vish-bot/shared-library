@@ -1,53 +1,51 @@
 import groovy.json.JsonSlurper
 
-def call() {
-    pipeline {
-        agent any
+pipeline {
+    agent any
 
-        stages {
-            stage('Create Jobs') {
-                steps {
-                    script {
-                        // Load clients.json from library resources
-                        def clientsJson = libraryResource('clients.json')
-                        def rawClients = new JsonSlurper().parseText(clientsJson)
+    options {
+        skipDefaultCheckout()
+        disableConcurrentBuilds()
+        timeout(time: 2, unit: 'HOURS')
+    }
 
-                        // Convert each client to a plain HashMap
-                        def clients = rawClients.collect { client ->
-                            return [name: client.name, environment: client.environment]
-                        }
+    stages {
+        stage('Create Jobs') {
+            steps {
+                script {
+                    // Load JSON from shared library resource
+                    def rawClients = libraryResource('clients.json')
+                    def parsedClients = new JsonSlurper().parseText(rawClients)
 
-                        echo "Creating jobs for ${clients.size()} clients..."
+                    // Convert LazyMap → HashMap to make it serializable
+                    def clients = parsedClients.collect { client ->
+                        client instanceof Map ? new HashMap(client) : client
+                    }
 
-                        clients.each { client ->
-                            createJobForClient(client)
-                        }
+                    echo "Creating jobs for ${clients.size()} clients..."
+
+                    // Iterate over clients and create jobs using Job DSL
+                    clients.each { client ->
+                        def clientName = client instanceof Map ? client.name : client
+                        echo "Creating job for ${clientName}..."
+
+                        jobDsl(scriptText: """
+                            job('${clientName}-job') {
+                                description('Job created for ${clientName}')
+                                scm {
+                                    git('https://github.com/the-vish-bot/some-repo.git', 'main')
+                                }
+                                triggers {
+                                    scm('H/5 * * * *')
+                                }
+                                steps {
+                                    shell('echo Running job for ${clientName}')
+                                }
+                            }
+                        """.stripIndent())
                     }
                 }
             }
         }
     }
-}
-
-def createJobForClient(client) {
-    echo "Creating job for ${client.name}..."
-
-    jobDsl scriptText: """
-        pipelineJob('deploy-${client.name}') {
-            description('Deploy pipeline for ${client.name}')
-
-            definition {
-                cps {
-                    sandbox(true)
-                    script(\"\"\"
-                        @Library('my-shared-library') _
-                        deployApp(
-                            clientName: '${client.name}',
-                            environment: '${client.environment}'
-                        )
-                    \"\"\")
-                }
-            }
-        }
-    """
 }
