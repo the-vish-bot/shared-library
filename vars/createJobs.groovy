@@ -9,7 +9,8 @@ def call() {
                         def clients = [
                             [name: 'acme',   environment: 'production'],
                             [name: 'globex', environment: 'production'],
-                            [name: 'timex', environment: 'production']
+                            [name: 'timex', environment: 'production'],
+                            [name: 'flex', environment: 'production']
                             
                             
                         ]
