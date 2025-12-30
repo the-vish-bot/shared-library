@@ -1,48 +1,53 @@
 import groovy.json.JsonSlurper
 
-@NonCPS
-def parseClients(String jsonText) {
-    def slurper = new JsonSlurper()
-    def parsed = slurper.parseText(jsonText)
-    // Convert to ArrayList of plain HashMaps to ensure serializability
-    return parsed.collect { client ->
-        [name: client.name.toString(), environment: client.environment.toString()]
-    }
-}
-
 def call() {
-    // Load and parse clients
-    def clientsJson = libraryResource('clients.json')
-    def clients = parseClients(clientsJson)
-    
-    echo "Creating jobs for ${clients.size()} clients..."
-    
-    // Create jobs for each client
-    for (int i = 0; i < clients.size(); i++) {
-        def client = clients[i]
-        def clientName = client.name
-        def clientEnv = client.environment
-        
-        echo "Creating job for ${clientName}..."
-        
-        jobDsl scriptText: """
-            pipelineJob('deploy-${clientName}') {
-                description('Deploy pipeline for ${clientName}')
-                definition {
-                    cps {
-                        sandbox(true)
-                        script('''
-                            @Library('my-shared-library') _
-                            deployApp(
-                                clientName: '${clientName}',
-                                environment: '${clientEnv}'
-                            )
-                        ''')
+    pipeline {
+        agent any
+
+        stages {
+            stage('Create Jobs') {
+                steps {
+                    script {
+                        // Load clients.json from library resources
+                        def clientsJson = libraryResource('clients.json')
+                        def rawClients = new JsonSlurper().parseText(clientsJson)
+
+                        // Convert each client to a plain HashMap
+                        def clients = rawClients.collect { client ->
+                            return [name: client.name, environment: client.environment]
+                        }
+
+                        echo "Creating jobs for ${clients.size()} clients..."
+
+                        clients.each { client ->
+                            createJobForClient(client)
+                        }
                     }
                 }
             }
-        """
+        }
     }
-    
-    echo "✅ Successfully created ${clients.size()} jobs"
+}
+
+def createJobForClient(client) {
+    echo "Creating job for ${client.name}..."
+
+    jobDsl scriptText: """
+        pipelineJob('deploy-${client.name}') {
+            description('Deploy pipeline for ${client.name}')
+
+            definition {
+                cps {
+                    sandbox(true)
+                    script(\"\"\"
+                        @Library('my-shared-library') _
+                        deployApp(
+                            clientName: '${client.name}',
+                            environment: '${client.environment}'
+                        )
+                    \"\"\")
+                }
+            }
+        }
+    """
 }
