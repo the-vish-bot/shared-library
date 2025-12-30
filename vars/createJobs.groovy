@@ -10,7 +10,9 @@ def call() {
                             [name: 'acme',   environment: 'production'],
                             [name: 'globex', environment: 'production'],
                             [name: 'timex', environment: 'production'],
-                            [name: 'flex', environment: 'production']
+                            [name: 'flex', environment: 'production'],
+                            [name: 'rolex', environment: 'production']
+                            
                             
                             
                         ]
