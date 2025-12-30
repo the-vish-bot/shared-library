@@ -8,7 +8,10 @@ def call() {
                     script {
                         def clients = [
                             [name: 'acme',   environment: 'production'],
-                            [name: 'globex', environment: 'production']
+                            [name: 'globex', environment: 'production'],
+                            [name: 'timex', environment: 'production']
+                            
+                            
                         ]
 
                         echo "Creating jobs for ${clients.size()} clients..."
