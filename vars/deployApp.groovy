@@ -2,17 +2,38 @@ def call(Map config) {
     pipeline {
         agent any
         
+        parameters {
+            string(name: 'VERSION', defaultValue: 'latest', description: 'Version to deploy')
+            booleanParam(name: 'RUN_TESTS', defaultValue: true, description: 'Run tests?')
+        }
+        
         stages {
             stage('Hello') {
                 steps {
                     echo "👋 Hello from ${config.clientName}!"
+                    echo "Environment: ${config.environment}"
+                    echo "Version: ${params.VERSION}"
                 }
             }
             
             stage('Build') {
                 steps {
                     echo "🔨 Building for ${config.clientName}..."
-                    sh 'echo "Building application..."'
+                    sh """
+                        echo "Building application..."
+                        echo "Client: ${config.clientName}"
+                        echo "Version: ${params.VERSION}"
+                    """
+                }
+            }
+            
+            stage('Test') {
+                when {
+                    expression { params.RUN_TESTS == true }
+                }
+                steps {
+                    echo "🧪 Running tests..."
+                    sh 'echo "All tests passed!"'
                 }
             }
             
@@ -20,10 +41,11 @@ def call(Map config) {
                 steps {
                     echo "🚀 Deploying to ${config.environment}..."
                     sh """
-                        echo "====================================="
-                        echo "   Deployed to ${config.clientName}!"
+                        echo "=========================================="
+                        echo "   DEPLOYED TO ${config.clientName}!"
                         echo "   Environment: ${config.environment}"
-                        echo "====================================="
+                        echo "   Version: ${params.VERSION}"
+                        echo "=========================================="
                     """
                 }
             }
@@ -31,10 +53,10 @@ def call(Map config) {
         
         post {
             success {
-                echo "✅ Success!"
+                echo "✅ Deployment successful!"
             }
             failure {
-                echo "❌ Failed!"
+                echo "❌ Deployment failed!"
             }
         }
     }

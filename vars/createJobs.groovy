@@ -1,18 +1,20 @@
-def call(String configFile) {
+def call() {
     pipeline {
         agent any
         
         stages {
-            stage('Read Config') {
+            stage('Create Jobs') {
                 steps {
                     script {
-                        echo "📋 Reading ${configFile}..."
-                        def config = readJSON file: configFile
+                        // Add your clients here
+                        def clients = [
+                            [name: 'acme', environment: 'production'],
+                            [name: 'globex', environment: 'production']
+                        ]
                         
-                        echo "Found ${config.clients.size()} clients"
+                        echo "Creating jobs for ${clients.size()} clients..."
                         
-                        // Create a job for each client
-                        config.clients.each { client ->
+                        clients.each { client ->
                             createJobForClient(client)
                         }
                     }
@@ -23,7 +25,7 @@ def call(String configFile) {
 }
 
 def createJobForClient(client) {
-    echo "🔨 Creating job for ${client.name}..."
+    echo "Creating job for ${client.name}..."
     
     jobDsl scriptText: """
         pipelineJob('deploy-${client.name}') {
@@ -33,7 +35,6 @@ def createJobForClient(client) {
                 cps {
                     script('''
                         @Library('my-shared-library') _
-                        
                         deployApp(
                             clientName: '${client.name}',
                             environment: '${client.environment}'
@@ -43,7 +44,4 @@ def createJobForClient(client) {
             }
         }
     """
-    
-    echo "✅ Created job: deploy-${client.name}"
 }
-
