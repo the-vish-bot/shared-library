@@ -3,7 +3,6 @@ import groovy.json.JsonSlurper
 def call() {
     pipeline {
         agent any
-
         stages {
             stage('Create Jobs') {
                 steps {
@@ -11,16 +10,20 @@ def call() {
                         // Load clients.json from library resources
                         def clientsJson = libraryResource('clients.json')
                         def rawClients = new JsonSlurper().parseText(clientsJson)
-
-                        // Convert each client to a plain HashMap
+                        
+                        // Convert to serializable plain Maps and Lists
                         def clients = rawClients.collect { client ->
-                            return [name: client.name, environment: client.environment]
+                            [
+                                name: client.name.toString(),
+                                environment: client.environment.toString()
+                            ]
                         }
-
+                        
                         echo "Creating jobs for ${clients.size()} clients..."
-
+                        
+                        // Process each client
                         clients.each { client ->
-                            createJobForClient(client)
+                            createJobForClient(client.name, client.environment)
                         }
                     }
                 }
@@ -29,21 +32,19 @@ def call() {
     }
 }
 
-def createJobForClient(client) {
-    echo "Creating job for ${client.name}..."
-
+def createJobForClient(String clientName, String environment) {
+    echo "Creating job for ${clientName}..."
     jobDsl scriptText: """
-        pipelineJob('deploy-${client.name}') {
-            description('Deploy pipeline for ${client.name}')
-
+        pipelineJob('deploy-${clientName}') {
+            description('Deploy pipeline for ${clientName}')
             definition {
                 cps {
                     sandbox(true)
                     script(\"\"\"
                         @Library('my-shared-library') _
                         deployApp(
-                            clientName: '${client.name}',
-                            environment: '${client.environment}'
+                            clientName: '${clientName}',
+                            environment: '${environment}'
                         )
                     \"\"\")
                 }
