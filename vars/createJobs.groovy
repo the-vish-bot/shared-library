@@ -8,11 +8,11 @@ def call() {
             stage('Create Jobs') {
                 steps {
                     script {
-                        // Read clients.json dynamically
-                        def jsonFile = "${WORKSPACE}/clients.json"
-                        def clients = new JsonSlurper().parse(new File(jsonFile))
+                        // Load clients.json from library resources
+                        def clientsJson = libraryResource('clients.json')
+                        def clients = new JsonSlurper().parseText(clientsJson)
 
-                        echo "Creating jobs for ${clients.size()} clients: ${clients.collect { it.name }}"
+                        echo "Creating jobs for ${clients.size()} clients..."
 
                         clients.each { client ->
                             createJobForClient(client)
@@ -27,13 +27,13 @@ def call() {
 def createJobForClient(client) {
     echo "Creating job for ${client.name}..."
 
-    // Job DSL outside sandbox to avoid approval
     jobDsl scriptText: """
         pipelineJob('deploy-${client.name}') {
             description('Deploy pipeline for ${client.name}')
+
             definition {
                 cps {
-                    sandbox(false)
+                    sandbox(true)
                     script(\"\"\"
                         @Library('my-shared-library') _
                         deployApp(
@@ -46,4 +46,3 @@ def createJobForClient(client) {
         }
     """
 }
-
